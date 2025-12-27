@@ -52,7 +52,7 @@ export function OthersExcelImportDialog() {
   const findColumn = (headers: string[], keywords: string[]): string | null => {
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim())
     for (const keyword of keywords) {
-      const index = normalizedHeaders.findIndex((h) => h.includes(keyword.toLowerCase()))
+      const index = normalizedHeaders.findIndex((h) => h === keyword.toLowerCase() || h.includes(keyword.toLowerCase()))
       if (index !== -1) return headers[index]
     }
     return null
@@ -80,17 +80,16 @@ export function OthersExcelImportDialog() {
         const headers = Object.keys(jsonData[0])
         setDetectedColumns(headers)
 
-        // Find columns - looking for Name, Display IP, Controller IP, Location, Camera IP
-        const nameCol = findColumn(headers, ["name", "device", "device name"])
-        const displayIpCol = findColumn(headers, ["display ip", "display", "displayip"])
-        const controllerIpCol = findColumn(headers, ["controller ip", "controller", "controllerip"])
-        const locationCol = findColumn(headers, ["location", "site", "place"])
-        const cameraIpCol = findColumn(headers, ["camera ip", "camera", "cameraip"])
+        const nameCol = findColumn(headers, ["name"])
+        const displayIpCol = findColumn(headers, ["display ip"])
+        const controllerIpCol = findColumn(headers, ["controller ip"])
+        const locationCol = findColumn(headers, ["location"])
+        const cameraIpCol = findColumn(headers, ["camera ip"])
 
         if (!nameCol || !displayIpCol || !controllerIpCol || !locationCol) {
           toast({
             title: "Missing Columns",
-            description: "Excel must have Name, Display IP, Controller IP, and Location columns",
+            description: "Excel must have: Name, Display IP, Controller IP, and Location columns",
             variant: "destructive",
           })
           return
@@ -116,14 +115,14 @@ export function OthersExcelImportDialog() {
 
           if (!location) errors.push("Missing location")
 
-          if (cameraIp && !isValidIp(cameraIp)) errors.push("Invalid Camera IP format")
+          if (cameraIp && cameraIp !== "-" && !isValidIp(cameraIp)) errors.push("Invalid Camera IP format")
 
           return {
             name,
             displayIp,
             controllerIp,
             location,
-            cameraIp: cameraIp || null,
+            cameraIp: cameraIp && cameraIp !== "-" ? cameraIp : null,
             isValid: errors.length === 0,
             errors,
           }
