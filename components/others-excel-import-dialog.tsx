@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
@@ -188,7 +187,7 @@ export function OthersExcelImportDialog() {
           Import Excel
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-green-600" />
@@ -199,7 +198,7 @@ export function OthersExcelImportDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1">
           {/* File Upload */}
           <div className="flex items-center gap-4">
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" />
@@ -207,14 +206,16 @@ export function OthersExcelImportDialog() {
               <Upload className="h-4 w-4 mr-2" />
               {file ? "Change File" : "Select Excel File"}
             </Button>
-            {file && <span className="text-sm text-muted-foreground">{file.name}</span>}
+            {file && <span className="text-sm text-muted-foreground truncate max-w-xs">{file.name}</span>}
           </div>
 
           {/* Column Detection Info */}
           {detectedColumns.length > 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>Detected columns: {detectedColumns.join(", ")}</AlertDescription>
+              <AlertDescription className="break-words">
+                Detected columns: {detectedColumns.join(", ")}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -234,17 +235,17 @@ export function OthersExcelImportDialog() {
                 )}
               </div>
 
-              <ScrollArea className="h-[300px] border rounded-md">
+              <div className="border rounded-md overflow-auto max-h-[400px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Display IP</TableHead>
-                      <TableHead>Controller IP</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Camera IP</TableHead>
-                      <TableHead>Errors</TableHead>
+                      <TableHead className="w-[60px]">Status</TableHead>
+                      <TableHead className="min-w-[150px]">Name</TableHead>
+                      <TableHead className="min-w-[130px]">Display IP</TableHead>
+                      <TableHead className="min-w-[130px]">Controller IP</TableHead>
+                      <TableHead className="min-w-[150px]">Location</TableHead>
+                      <TableHead className="min-w-[130px]">Camera IP</TableHead>
+                      <TableHead className="min-w-[200px]">Errors</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -257,22 +258,22 @@ export function OthersExcelImportDialog() {
                             <AlertCircle className="h-4 w-4 text-destructive" />
                           )}
                         </TableCell>
-                        <TableCell>{device.name || "-"}</TableCell>
-                        <TableCell className="font-mono">{device.displayIp || "-"}</TableCell>
-                        <TableCell className="font-mono">{device.controllerIp || "-"}</TableCell>
+                        <TableCell className="font-medium">{device.name || "-"}</TableCell>
+                        <TableCell className="font-mono text-sm">{device.displayIp || "-"}</TableCell>
+                        <TableCell className="font-mono text-sm">{device.controllerIp || "-"}</TableCell>
                         <TableCell>{device.location || "-"}</TableCell>
-                        <TableCell className="font-mono">{device.cameraIp || "-"}</TableCell>
-                        <TableCell className="text-destructive text-xs">{device.errors.join(", ")}</TableCell>
+                        <TableCell className="font-mono text-sm">{device.cameraIp || "-"}</TableCell>
+                        <TableCell className="text-destructive text-xs">{device.errors.join(", ") || "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             </>
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => {
