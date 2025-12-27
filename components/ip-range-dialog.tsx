@@ -24,6 +24,15 @@ interface IpRangeDialogProps {
   trigger?: React.ReactNode
 }
 
+function extractVlanFromIp(ip: string): number | null {
+  if (!isValidIp(ip)) return null
+  const parts = ip.split(".")
+  if (parts.length !== 4) return null
+  const thirdOctet = Number.parseInt(parts[2], 10)
+  if (isNaN(thirdOctet) || thirdOctet < 1 || thirdOctet > 255) return null
+  return thirdOctet
+}
+
 export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
   const [open, setOpen] = React.useState(false)
   const [inputType, setInputType] = React.useState<"range" | "cidr">("range")
@@ -33,6 +42,7 @@ export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
   const [cidr, setCidr] = React.useState("")
   const [vlanId, setVlanId] = React.useState<string>("none")
   const [error, setError] = React.useState("")
+  const [autoDetectedVlan, setAutoDetectedVlan] = React.useState<string | null>(null)
 
   const { addIpRange, vlans } = useStore()
   const { toast } = useToast()
@@ -44,6 +54,39 @@ export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
     setCidr("")
     setVlanId("none")
     setError("")
+    setAutoDetectedVlan(null)
+  }
+
+  const handleStartIpChange = (value: string) => {
+    setStartIp(value)
+    autoDetectVlan(value)
+  }
+
+  const handleCidrChange = (value: string) => {
+    setCidr(value)
+    // Extract IP from CIDR (e.g., "10.2.20.0/24" -> "10.2.20.0")
+    const ip = value.split("/")[0]
+    if (ip) {
+      autoDetectVlan(ip)
+    }
+  }
+
+  const autoDetectVlan = (ip: string) => {
+    const vlanNumber = extractVlanFromIp(ip)
+    if (vlanNumber !== null) {
+      // Find matching VLAN by vlanId number
+      const matchingVlan = vlans.find((v) => v.vlanId === vlanNumber)
+      if (matchingVlan) {
+        setVlanId(matchingVlan.id)
+        setAutoDetectedVlan(`VLAN ${matchingVlan.vlanId} - ${matchingVlan.name}`)
+      } else {
+        // No matching VLAN found, but show what we detected
+        setAutoDetectedVlan(`VLAN ${vlanNumber} (not created yet)`)
+        setVlanId("none")
+      }
+    } else {
+      setAutoDetectedVlan(null)
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -151,6 +194,9 @@ export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
                   ))}
                 </SelectContent>
               </Select>
+              {autoDetectedVlan && (
+                <p className="text-xs text-green-600 dark:text-green-400">Auto-detected from IP: {autoDetectedVlan}</p>
+              )}
             </div>
 
             <Tabs value={inputType} onValueChange={(v) => setInputType(v as "range" | "cidr")}>
@@ -165,7 +211,7 @@ export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
                     id="startIp"
                     placeholder="192.168.1.1"
                     value={startIp}
-                    onChange={(e) => setStartIp(e.target.value)}
+                    onChange={(e) => handleStartIpChange(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -185,7 +231,7 @@ export function IpRangeDialog({ trigger }: IpRangeDialogProps) {
                     id="cidr"
                     placeholder="192.168.1.0/24"
                     value={cidr}
-                    onChange={(e) => setCidr(e.target.value)}
+                    onChange={(e) => handleCidrChange(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">Example: 192.168.1.0/24 creates 254 usable addresses</p>
                 </div>

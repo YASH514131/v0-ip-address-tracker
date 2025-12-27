@@ -11,17 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 import { useStore } from "@/lib/store"
 import { exportDevicesToCsv, exportIpsToCsv, downloadCsv } from "@/lib/csv-export"
 import { exportDevicesToExcel, exportIpsToExcel, exportAllToExcel } from "@/lib/excel-export"
@@ -31,17 +20,19 @@ import { ExcelImportDialog } from "./excel-import-dialog"
 import { IpRangeDialog } from "./ip-range-dialog"
 import { ExportFilenameDialog } from "./export-filename-dialog"
 import { BackupRestoreDialog } from "./backup-restore-dialog"
+import { DeleteOptionsDialog } from "./delete-options-dialog"
 
 type ExportType = "all" | "devices" | "ips" | "backup" | null
 
 export function Header() {
   const { theme, setTheme } = useTheme()
-  const { devices, ipAddresses, ipRanges, vlans, clearAllData } = useStore()
+  const { devices, ipAddresses, ipRanges, vlans } = useStore()
 
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [pendingExport, setPendingExport] = React.useState<ExportType>(null)
   const [defaultFilename, setDefaultFilename] = React.useState("")
   const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
 
   const getDateString = () => new Date().toISOString().split("T")[0]
 
@@ -227,37 +218,15 @@ export function Header() {
               <span className="sr-only">Toggle theme</span>
             </Button>
 
-            {/* Clear Data */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="text-destructive hover:text-destructive bg-transparent"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="sr-only">Clear all data</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear All Data?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete all devices, VLANs, IP ranges, and assignments. This action cannot be
-                    undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={clearAllData}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Clear All Data
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="outline"
+              size="icon"
+              className="text-destructive hover:text-destructive bg-transparent"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete data</span>
+            </Button>
           </div>
         </div>
       </header>
@@ -274,6 +243,8 @@ export function Header() {
       />
 
       <BackupRestoreDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen} />
+
+      <DeleteOptionsDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} />
     </>
   )
 }
