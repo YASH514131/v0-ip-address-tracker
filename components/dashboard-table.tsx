@@ -30,6 +30,7 @@ import { STATUS_COLORS, VLAN_COLORS, type IPStatus, type Device } from "@/lib/ty
 import { DeviceDialog } from "./device-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { exportFilteredToExcel } from "@/lib/excel-export"
+import { ExportFilenameDialog } from "./export-filename-dialog"
 
 type SortField = "ip" | "device" | "location" | "vlan" | "status" | "assignedAt" | "switchIp"
 type SortDirection = "asc" | "desc"
@@ -41,8 +42,10 @@ export function DashboardTable() {
   const [sortField, setSortField] = React.useState<SortField>("ip")
   const [sortDirection, setSortDirection] = React.useState<SortDirection>("asc")
   const [deleteDevice, setDeleteDevice] = React.useState<Device | null>(null)
+  const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
+  const [defaultFilename, setDefaultFilename] = React.useState("")
 
-  const { devices, ipAddresses, vlans, deleteDevice: removeDevice, updateIpStatus, unassignIp } = useStore()
+  const { devices, ipAddresses, vlans, deleteDevice: removeDevice, updateIpStatus } = useStore()
   const { toast } = useToast()
 
   const dashboardData = React.useMemo(() => {
@@ -173,7 +176,7 @@ export function DashboardTable() {
 
   const getVlanColor = (index: number) => VLAN_COLORS[index % VLAN_COLORS.length]
 
-  const handleExportFiltered = () => {
+  const handleExportClick = () => {
     const filterParts: string[] = []
     if (statusFilter !== "all") filterParts.push(statusFilter)
     if (vlanFilter !== "all") {
@@ -183,6 +186,11 @@ export function DashboardTable() {
     if (search) filterParts.push("search")
     const filterDescription = filterParts.length > 0 ? filterParts.join("-") : "all"
 
+    setDefaultFilename(`ip-inventory-${filterDescription}-${new Date().toISOString().split("T")[0]}`)
+    setExportDialogOpen(true)
+  }
+
+  const handleExportConfirm = (filename: string) => {
     const exportData = filteredData.map((item) => ({
       ipAddress: item.ipAddress,
       deviceName: item.deviceName,
@@ -193,7 +201,7 @@ export function DashboardTable() {
       switchIp: item.switchIp || "",
     }))
 
-    exportFilteredToExcel(exportData, filterDescription)
+    exportFilteredToExcel(exportData, filename)
     toast({
       title: "Export Complete",
       description: `Exported ${filteredData.length} filtered records to Excel`,
@@ -240,7 +248,7 @@ export function DashboardTable() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExportFiltered}
+              onClick={handleExportClick}
               disabled={filteredData.length === 0}
               className="gap-2 bg-transparent"
             >
@@ -456,6 +464,15 @@ export function DashboardTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ExportFilenameDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        defaultFilename={defaultFilename}
+        onConfirm={handleExportConfirm}
+        title="Export Filtered Data"
+        description="Enter a name for your export file"
+      />
     </>
   )
 }

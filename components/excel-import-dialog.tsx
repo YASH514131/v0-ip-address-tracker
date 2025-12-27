@@ -41,6 +41,7 @@ export function ExcelImportDialog() {
     skipped: number
     errors: string[]
   } | null>(null)
+  const [detectedColumns, setDetectedColumns] = React.useState<string>("")
 
   const { vlans, bulkImportDevices } = useStore()
   const { toast } = useToast()
@@ -51,6 +52,7 @@ export function ExcelImportDialog() {
     setParsedData([])
     setSelectedVlan("none")
     setImportResult(null)
+    setDetectedColumns("")
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,15 +70,25 @@ export function ExcelImportDialog() {
       const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
 
       // Find header row and column indices
-      const headers = jsonData[0] as string[]
-      const locationIdx = headers.findIndex((h) => h?.toString().toLowerCase().includes("location"))
-      const ipIdx = headers.findIndex(
-        (h) => h?.toString().toLowerCase().includes("ip") || h?.toString().toLowerCase().includes("address"),
-      )
+      const headers = (jsonData[0] as string[]).map((h) => h?.toString().toLowerCase().trim() || "")
+
+      const locationIdx = headers.findIndex((h) => h.includes("location") || h.includes("loc") || h === "site")
+      const ipIdx = headers.findIndex((h) => h.includes("ip") || h.includes("address") || h === "ip address")
       const deviceIdx = headers.findIndex(
-        (h) => h?.toString().toLowerCase().includes("device") || h?.toString().toLowerCase().includes("name"),
+        (h) => h.includes("device") || h.includes("name") || h.includes("hostname") || h === "device name",
       )
-      const switchIpIdx = headers.findIndex((h) => h?.toString().toLowerCase().includes("switch"))
+      const switchIpIdx = headers.findIndex(
+        (h) => h.includes("switch") || h.includes("uplink") || h.includes("gateway"),
+      )
+
+      // Store detected columns info for user feedback
+      const originalHeaders = jsonData[0] as string[]
+      setDetectedColumns(
+        `Detected: Location(${locationIdx >= 0 ? originalHeaders[locationIdx] : "not found"}), ` +
+          `IP(${ipIdx >= 0 ? originalHeaders[ipIdx] : "not found"}), ` +
+          `Device(${deviceIdx >= 0 ? originalHeaders[deviceIdx] : "not found"}), ` +
+          `Switch(${switchIpIdx >= 0 ? originalHeaders[switchIpIdx] : "not found"})`,
+      )
 
       if (locationIdx === -1 || ipIdx === -1 || deviceIdx === -1) {
         toast({
@@ -94,7 +106,7 @@ export function ExcelImportDialog() {
         const location = row[locationIdx]?.toString().trim() || ""
         const ipAddress = row[ipIdx]?.toString().trim() || ""
         const deviceName = row[deviceIdx]?.toString().trim() || ""
-        const switchIp = switchIpIdx !== -1 ? row[switchIpIdx]?.toString().trim() || null : null
+        const switchIp = switchIpIdx !== -1 && row[switchIpIdx] ? row[switchIpIdx]?.toString().trim() || null : null
 
         // Skip empty rows
         if (!location && !ipAddress && !deviceName) continue
@@ -114,7 +126,7 @@ export function ExcelImportDialog() {
         } else if (!isValidIp(ipAddress)) {
           isValid = false
           error = "Invalid IP format"
-        } else if (switchIp && !isValidIp(switchIp)) {
+        } else if (switchIp && switchIp.length > 0 && !isValidIp(switchIp)) {
           isValid = false
           error = "Invalid Switch IP format"
         }
@@ -177,7 +189,7 @@ export function ExcelImportDialog() {
         <DialogHeader>
           <DialogTitle>Import from Excel</DialogTitle>
           <DialogDescription>
-            Upload an Excel file (.xlsx) with columns: Location, IP Address, Device Name, Switch IP (optional)
+            Upload an Excel file (.xlsx) with columns: Location, IP Address, Device Name, Switch (optional)
           </DialogDescription>
         </DialogHeader>
 
@@ -200,6 +212,8 @@ export function ExcelImportDialog() {
               </div>
             </Button>
           </div>
+
+          {detectedColumns && <p className="text-xs text-muted-foreground bg-muted p-2 rounded">{detectedColumns}</p>}
 
           {/* VLAN Selection */}
           {parsedData.length > 0 && (
