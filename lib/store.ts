@@ -538,7 +538,7 @@ export const useStore = create<StoreState>()(
         const now = new Date()
         const newDevice: OtherDevice = {
           ...deviceData,
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: generateId(),
           createdAt: now,
           updatedAt: now,
           assignedAt: now,

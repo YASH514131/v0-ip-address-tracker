@@ -94,7 +94,7 @@ export interface OtherDevice {
   displayIp: string
   controllerIp: string
   location: string
-  notes: string
+  cameraIp: string
   createdAt: Date
   updatedAt: Date
   assignedAt: Date | null

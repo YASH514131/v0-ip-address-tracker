@@ -19,6 +19,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
 import { OtherDeviceDialog } from "./other-device-dialog"
+import { OthersExcelImportDialog } from "./others-excel-import-dialog"
 import { ExportFilenameDialog } from "./export-filename-dialog"
 import { useToast } from "@/hooks/use-toast"
 import type { OtherDevice } from "@/lib/types"
@@ -44,7 +45,8 @@ export function OthersPage({ onBack }: OthersPageProps) {
         device.name.toLowerCase().includes(searchLower) ||
         device.displayIp.toLowerCase().includes(searchLower) ||
         device.controllerIp.toLowerCase().includes(searchLower) ||
-        device.location.toLowerCase().includes(searchLower),
+        device.location.toLowerCase().includes(searchLower) ||
+        (device.cameraIp && device.cameraIp.toLowerCase().includes(searchLower)),
     )
   }, [otherDevices, search])
 
@@ -74,7 +76,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
       deleteOtherDevice(deleteDevice.id)
       toast({
         title: "Device Deleted",
-        description: `${deleteDevice.name} has been removed`,
+        description: `${deleteDevice.name} has been removed from Others inventory`,
       })
       setDeleteDevice(null)
     }
@@ -88,7 +90,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
         "Display IP": device.displayIp,
         "Controller IP": device.controllerIp,
         Location: device.location,
-        Notes: device.notes || "-",
+        "Camera IP": device.cameraIp || "-",
         "Assigned Date": date,
         "Assigned Time": time,
       }
@@ -96,7 +98,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
 
     const workbook = XLSX.utils.book_new()
     const worksheet = XLSX.utils.json_to_sheet(data)
-    worksheet["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 14 }, { wch: 12 }]
+    worksheet["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 14 }, { wch: 12 }]
     XLSX.utils.book_append_sheet(workbook, worksheet, "Others")
 
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
@@ -143,6 +145,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
                   />
                 </div>
                 <div className="flex gap-2">
+                  <OthersExcelImportDialog />
                   <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)}>
                     <Download className="h-4 w-4 mr-2" />
                     Export ({filteredDevices.length})
@@ -161,7 +164,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
                     <TableHead>Display IP</TableHead>
                     <TableHead>Controller IP</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead>Notes</TableHead>
+                    <TableHead>Camera IP</TableHead>
                     <TableHead>Assigned Date</TableHead>
                     <TableHead>Assigned Time</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
@@ -185,7 +188,7 @@ export function OthersPage({ onBack }: OthersPageProps) {
                           <TableCell className="font-mono">{device.displayIp}</TableCell>
                           <TableCell className="font-mono">{device.controllerIp}</TableCell>
                           <TableCell>{device.location}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{device.notes || "-"}</TableCell>
+                          <TableCell className="font-mono">{device.cameraIp || "-"}</TableCell>
                           <TableCell>{date}</TableCell>
                           <TableCell>{time}</TableCell>
                           <TableCell>
@@ -237,9 +240,10 @@ export function OthersPage({ onBack }: OthersPageProps) {
       <AlertDialog open={!!deleteDevice} onOpenChange={(open) => !open && setDeleteDevice(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Device?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Device from Others Inventory?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteDevice?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{deleteDevice?.name}"? This only affects the Others inventory and cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

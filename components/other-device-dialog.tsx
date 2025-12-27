@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { useStore } from "@/lib/store"
 import { useToast } from "@/hooks/use-toast"
 import { isValidIp } from "@/lib/ip-utils"
@@ -23,7 +22,7 @@ export function OtherDeviceDialog({ device, trigger }: OtherDeviceDialogProps) {
   const [displayIp, setDisplayIp] = React.useState("")
   const [controllerIp, setControllerIp] = React.useState("")
   const [location, setLocation] = React.useState("")
-  const [notes, setNotes] = React.useState("")
+  const [cameraIp, setCameraIp] = React.useState("")
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   const { addOtherDevice, updateOtherDevice } = useStore()
@@ -36,14 +35,14 @@ export function OtherDeviceDialog({ device, trigger }: OtherDeviceDialogProps) {
       setDisplayIp(device.displayIp)
       setControllerIp(device.controllerIp)
       setLocation(device.location)
-      setNotes(device.notes)
+      setCameraIp(device.cameraIp || "")
       setErrors({})
     } else if (open) {
       setName("")
       setDisplayIp("")
       setControllerIp("")
       setLocation("")
-      setNotes("")
+      setCameraIp("")
       setErrors({})
     }
   }, [open, device])
@@ -71,6 +70,10 @@ export function OtherDeviceDialog({ device, trigger }: OtherDeviceDialogProps) {
       newErrors.location = "Location is required"
     }
 
+    if (cameraIp.trim() && !isValidIp(cameraIp)) {
+      newErrors.cameraIp = "Invalid IP address format"
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -85,7 +88,7 @@ export function OtherDeviceDialog({ device, trigger }: OtherDeviceDialogProps) {
       displayIp: displayIp.trim(),
       controllerIp: controllerIp.trim(),
       location: location.trim(),
-      notes: notes.trim(),
+      cameraIp: cameraIp.trim(),
     }
 
     let result
@@ -170,14 +173,14 @@ export function OtherDeviceDialog({ device, trigger }: OtherDeviceDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional notes..."
-              rows={3}
+            <Label htmlFor="cameraIp">Camera IP (Optional)</Label>
+            <Input
+              id="cameraIp"
+              value={cameraIp}
+              onChange={(e) => setCameraIp(e.target.value)}
+              placeholder="e.g., 192.168.10.100"
             />
+            {errors.cameraIp && <p className="text-sm text-destructive">{errors.cameraIp}</p>}
           </div>
 
           <div className="flex justify-end gap-2">
