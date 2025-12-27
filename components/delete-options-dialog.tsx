@@ -61,14 +61,14 @@ export function DeleteOptionsDialog({ open, onOpenChange }: DeleteOptionsDialogP
         if (!vlan) return ""
         const vlanDevices = devices.filter((d) => d.vlanId === selectedVlanId)
         const vlanIps = ipAddresses.filter((ip) => ip.vlanId === selectedVlanId)
-        return `This will delete VLAN ${vlan.vlanId} (${vlan.name}) and unassign ${vlanDevices.length} devices and ${vlanIps.length} IP addresses from this VLAN.`
+        return `This will DELETE VLAN ${vlan.vlanId} (${vlan.name}) along with ${vlanDevices.length} devices and ${vlanIps.length} IP addresses associated with this VLAN.`
       }
       case "iprange": {
         const range = ipRanges.find((r) => r.id === selectedRangeId)
         if (!range) return ""
         const rangeIps = ipAddresses.filter((ip) => ip.rangeId === selectedRangeId)
         const assignedCount = rangeIps.filter((ip) => ip.status === "assigned").length
-        return `This will delete IP range "${range.name}" (${range.startIp} - ${range.endIp}) with ${rangeIps.length} IPs. ${assignedCount} devices will have their IPs unassigned.`
+        return `This will DELETE IP range "${range.name}" (${range.startIp} - ${range.endIp}) with ${rangeIps.length} IPs and ${assignedCount} associated devices.`
       }
       case "all":
         return `This will permanently delete ALL data: ${devices.length} devices, ${ipAddresses.length} IP addresses, ${ipRanges.length} IP ranges, and ${vlans.length} VLANs.`

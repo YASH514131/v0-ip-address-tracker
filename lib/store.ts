@@ -269,14 +269,12 @@ export const useStore = create<StoreState>()(
         set((state) => {
           // Get IPs that will be deleted
           const ipsToDelete = state.ipAddresses.filter((ip) => ip.rangeId === id)
-          const affectedDeviceIds = new Set(ipsToDelete.filter((ip) => ip.deviceId).map((ip) => ip.deviceId!))
+          const deviceIdsToDelete = new Set(ipsToDelete.filter((ip) => ip.deviceId).map((ip) => ip.deviceId!))
 
           return {
             ipRanges: state.ipRanges.filter((r) => r.id !== id),
             ipAddresses: state.ipAddresses.filter((ip) => ip.rangeId !== id),
-            devices: state.devices.map((d) =>
-              affectedDeviceIds.has(d.id) ? { ...d, assignedIp: null, updatedAt: new Date() } : d,
-            ),
+            devices: state.devices.filter((d) => !deviceIdsToDelete.has(d.id)),
           }
         })
       },
@@ -431,15 +429,18 @@ export const useStore = create<StoreState>()(
       },
 
       deleteVlan: (id) => {
-        set((state) => ({
-          vlans: state.vlans.filter((v) => v.id !== id),
-          // Remove VLAN reference from devices and IPs
-          devices: state.devices.map((d) => (d.vlanId === id ? { ...d, vlanId: null, updatedAt: new Date() } : d)),
-          ipAddresses: state.ipAddresses.map((ip) =>
-            ip.vlanId === id ? { ...ip, vlanId: null, updatedAt: new Date() } : ip,
-          ),
-          ipRanges: state.ipRanges.map((r) => (r.vlanId === id ? { ...r, vlanId: null } : r)),
-        }))
+        set((state) => {
+          const deviceIdsToDelete = new Set(state.devices.filter((d) => d.vlanId === id).map((d) => d.id))
+
+          return {
+            vlans: state.vlans.filter((v) => v.id !== id),
+            devices: state.devices.filter((d) => d.vlanId !== id),
+            ipAddresses: state.ipAddresses.filter(
+              (ip) => ip.vlanId !== id && !deviceIdsToDelete.has(ip.deviceId || ""),
+            ),
+            ipRanges: state.ipRanges.map((r) => (r.vlanId === id ? { ...r, vlanId: null } : r)),
+          }
+        })
       },
 
       bulkImportDevices: (importData) => {
