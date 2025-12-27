@@ -2,7 +2,7 @@
 
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
-import type { Device, IPAddress, IPRange, IPStatus, AppState, VLAN } from "./types"
+import type { Device, IPAddress, IPRange, IPStatus, AppState, VLAN, OtherDevice } from "./types"
 import { generateIpRange } from "./ip-utils"
 
 // Generate a simple unique ID
@@ -25,7 +25,11 @@ const browserStorage = {
   },
 }
 
-interface StoreState extends AppState {
+interface ExtendedAppState extends AppState {
+  otherDevices: OtherDevice[]
+}
+
+interface StoreState extends ExtendedAppState {
   // Device actions
   addDevice: (device: Omit<Device, "id" | "createdAt" | "updatedAt" | "assignedAt">) => {
     success: boolean
@@ -58,11 +62,23 @@ interface StoreState extends AppState {
     errors: string[]
   }
 
+  // OtherDevice actions
+  addOtherDevice: (device: Omit<OtherDevice, "id" | "createdAt" | "updatedAt" | "assignedAt">) => {
+    success: boolean
+    error?: string
+  }
+  updateOtherDevice: (
+    id: string,
+    updates: Partial<Omit<OtherDevice, "id" | "createdAt">>,
+  ) => { success: boolean; error?: string }
+  deleteOtherDevice: (id: string) => void
+
   // Utility
   getDeviceById: (id: string) => Device | undefined
   getIpsByRange: (rangeId: string) => IPAddress[]
   getAvailableIps: () => IPAddress[]
   getVlanById: (id: string) => VLAN | undefined
+  getOtherDeviceById: (id: string) => OtherDevice | undefined
   clearAllData: () => void
 }
 
@@ -73,6 +89,7 @@ export const useStore = create<StoreState>()(
       ipAddresses: [],
       ipRanges: [],
       vlans: [],
+      otherDevices: [], // Added otherDevices array
 
       // Device Management
       addDevice: (deviceData) => {
@@ -508,21 +525,80 @@ export const useStore = create<StoreState>()(
         return { success: true, imported, skipped, errors }
       },
 
+      // OtherDevice Management
+      addOtherDevice: (deviceData) => {
+        const state = get()
+
+        // Check for duplicate display IP
+        const displayIpExists = state.otherDevices.some((d) => d.displayIp === deviceData.displayIp)
+        if (displayIpExists) {
+          return { success: false, error: "A device with this Display IP already exists" }
+        }
+
+        const now = new Date()
+        const newDevice: OtherDevice = {
+          ...deviceData,
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: now,
+          updatedAt: now,
+          assignedAt: now,
+        }
+
+        set((state) => ({
+          otherDevices: [...state.otherDevices, newDevice],
+        }))
+
+        return { success: true }
+      },
+
+      updateOtherDevice: (id, updates) => {
+        const state = get()
+        const existingDevice = state.otherDevices.find((d) => d.id === id)
+
+        if (!existingDevice) {
+          return { success: false, error: "Device not found" }
+        }
+
+        // Check for duplicate display IP if changing
+        if (updates.displayIp && updates.displayIp !== existingDevice.displayIp) {
+          const displayIpExists = state.otherDevices.some((d) => d.id !== id && d.displayIp === updates.displayIp)
+          if (displayIpExists) {
+            return { success: false, error: "A device with this Display IP already exists" }
+          }
+        }
+
+        set((state) => ({
+          otherDevices: state.otherDevices.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date() } : d)),
+        }))
+
+        return { success: true }
+      },
+
+      deleteOtherDevice: (id) => {
+        set((state) => ({
+          otherDevices: state.otherDevices.filter((d) => d.id !== id),
+        }))
+      },
+
       // Utilities
       getDeviceById: (id) => get().devices.find((d) => d.id === id),
       getIpsByRange: (rangeId) => get().ipAddresses.filter((ip) => ip.rangeId === rangeId),
       getAvailableIps: () => get().ipAddresses.filter((ip) => ip.status === "available"),
       getVlanById: (id) => get().vlans.find((v) => v.id === id),
-
-      clearAllData: () => set({ devices: [], ipAddresses: [], ipRanges: [], vlans: [] }),
+      getOtherDeviceById: (id) => get().otherDevices.find((d) => d.id === id),
+      clearAllData: () => set({ devices: [], ipAddresses: [], ipRanges: [], vlans: [], otherDevices: [] }),
     }),
     {
-      name: "ip-manager-storage-v4",
+      name: "ip-manager-storage-v5", // Bumped version for new schema
       storage: createJSONStorage(() => browserStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) => {
-        // Return persisted state as-is, it will be merged with defaults
-        return persistedState as StoreState
+        const state = persistedState as StoreState
+        // Add otherDevices if missing from older versions
+        if (!state.otherDevices) {
+          state.otherDevices = []
+        }
+        return state
       },
       // Custom serialization for Date objects
       serialize: (state) =>

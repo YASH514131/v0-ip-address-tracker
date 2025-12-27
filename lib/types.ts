@@ -88,6 +88,18 @@ export const STATUS_COLORS: Record<IPStatus, { bg: string; text: string; dot: st
   reserved: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", dot: "bg-amber-500" },
 }
 
+export interface OtherDevice {
+  id: string
+  name: string
+  displayIp: string
+  controllerIp: string
+  location: string
+  notes: string
+  createdAt: Date
+  updatedAt: Date
+  assignedAt: Date | null
+}
+
 export const VLAN_COLORS = [
   { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", border: "border-violet-500/30" },
   { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", border: "border-cyan-500/30" },

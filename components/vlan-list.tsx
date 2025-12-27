@@ -18,10 +18,12 @@ import {
 import { useStore } from "@/lib/store"
 import { VLAN_COLORS, type VLAN } from "@/lib/types"
 import { VlanDialog } from "./vlan-dialog"
+import { VlanDetailDialog } from "./vlan-detail-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 export function VlanList() {
   const [deleteVlan, setDeleteVlan] = React.useState<VLAN | null>(null)
+  const [selectedVlan, setSelectedVlan] = React.useState<{ vlan: VLAN; index: number } | null>(null)
   const { vlans, devices, ipAddresses, deleteVlan: removeVlan } = useStore()
   const { toast } = useToast()
 
@@ -67,7 +69,11 @@ export function VlanList() {
               const colors = getVlanColor(index)
 
               return (
-                <div key={vlan.id} className={`rounded-lg border p-4 ${colors.bg} ${colors.border}`}>
+                <div
+                  key={vlan.id}
+                  className={`rounded-lg border p-4 ${colors.bg} ${colors.border} cursor-pointer hover:opacity-80 transition-opacity`}
+                  onClick={() => setSelectedVlan({ vlan, index })}
+                >
                   <div className="flex items-start justify-between">
                     <div>
                       <Badge variant="outline" className={`${colors.text} ${colors.border} mb-2`}>
@@ -84,7 +90,7 @@ export function VlanList() {
                         </span>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <VlanDialog
                         vlan={vlan}
                         trigger={
@@ -109,6 +115,15 @@ export function VlanList() {
           </div>
         </CardContent>
       </Card>
+
+      {selectedVlan && (
+        <VlanDetailDialog
+          vlan={selectedVlan.vlan}
+          colorIndex={selectedVlan.index}
+          open={!!selectedVlan}
+          onOpenChange={(open) => !open && setSelectedVlan(null)}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteVlan} onOpenChange={(open) => !open && setDeleteVlan(null)}>

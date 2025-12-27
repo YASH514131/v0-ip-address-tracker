@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Network, Moon, Sun, Download, Trash2, FileSpreadsheet } from "lucide-react"
+import { Network, Moon, Sun, Download, Trash2, FileSpreadsheet, Save, Upload } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,8 +30,9 @@ import { VlanDialog } from "./vlan-dialog"
 import { ExcelImportDialog } from "./excel-import-dialog"
 import { IpRangeDialog } from "./ip-range-dialog"
 import { ExportFilenameDialog } from "./export-filename-dialog"
+import { BackupRestoreDialog } from "./backup-restore-dialog"
 
-type ExportType = "all" | "devices" | "ips" | null
+type ExportType = "all" | "devices" | "ips" | "backup" | null
 
 export function Header() {
   const { theme, setTheme } = useTheme()
@@ -40,8 +41,15 @@ export function Header() {
   const [exportDialogOpen, setExportDialogOpen] = React.useState(false)
   const [pendingExport, setPendingExport] = React.useState<ExportType>(null)
   const [defaultFilename, setDefaultFilename] = React.useState("")
+  const [restoreDialogOpen, setRestoreDialogOpen] = React.useState(false)
 
   const getDateString = () => new Date().toISOString().split("T")[0]
+
+  const handleBackupData = () => {
+    setDefaultFilename(`ip-manager-backup-${getDateString()}`)
+    setPendingExport("backup")
+    setExportDialogOpen(true)
+  }
 
   const handleExportAllExcel = () => {
     setDefaultFilename(`network-inventory-${getDateString()}`)
@@ -72,8 +80,35 @@ export function Header() {
       case "ips":
         exportIpsToExcel(ipAddresses, devices, ipRanges, vlans, filename)
         break
+      case "backup":
+        downloadBackup(filename)
+        break
     }
     setPendingExport(null)
+  }
+
+  const downloadBackup = (filename: string) => {
+    const backupData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: {
+        devices,
+        ipAddresses,
+        ipRanges,
+        vlans,
+      },
+    }
+
+    const jsonString = JSON.stringify(backupData, null, 2)
+    const blob = new Blob([jsonString], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${filename}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // CSV exports
@@ -131,6 +166,25 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                  <Save className="h-4 w-4" />
+                  <span className="hidden sm:inline">Backup</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleBackupData} className="gap-2">
+                  <Download className="h-4 w-4 text-blue-600" />
+                  Download Backup (JSON)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRestoreDialogOpen(true)} className="gap-2">
+                  <Upload className="h-4 w-4 text-green-600" />
+                  Restore from Backup
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -213,9 +267,13 @@ export function Header() {
         onOpenChange={setExportDialogOpen}
         defaultFilename={defaultFilename}
         onConfirm={handleExportConfirm}
-        title="Export to Excel"
-        description="Enter a name for your export file"
+        title={pendingExport === "backup" ? "Backup Data" : "Export to Excel"}
+        description={
+          pendingExport === "backup" ? "Enter a name for your backup file" : "Enter a name for your export file"
+        }
       />
+
+      <BackupRestoreDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen} />
     </>
   )
 }
