@@ -63,7 +63,6 @@ export function DashboardTable() {
           ipId: ip?.id,
           assignedAt: device.assignedAt || ip?.assignedAt || null,
           switchIp: device.switchIp || null,
-          createdAt: device.createdAt, // Added device creation timestamp
         }
       })
 
@@ -83,7 +82,6 @@ export function DashboardTable() {
           ipId: ip.id,
           assignedAt: ip.assignedAt,
           switchIp: null,
-          createdAt: ip.createdAt, // IP creation timestamp for unassigned IPs
         }
       })
 
@@ -131,17 +129,12 @@ export function DashboardTable() {
           comparison = a.status.localeCompare(b.status)
           break
         case "assignedAt":
-          const aAssignedTime = a.assignedAt?.getTime() || 0
-          const bAssignedTime = b.assignedAt?.getTime() || 0
-          comparison = aAssignedTime - bAssignedTime
+          const aTime = a.assignedAt ? new Date(a.assignedAt).getTime() : 0
+          const bTime = b.assignedAt ? new Date(b.assignedAt).getTime() : 0
+          comparison = aTime - bTime
           break
         case "switchIp":
           comparison = (a.switchIp || "").localeCompare(b.switchIp || "", undefined, { numeric: true })
-          break
-        case "createdAt":
-          const aCreatedTime = a.createdAt?.getTime() || 0
-          const bCreatedTime = b.createdAt?.getTime() || 0
-          comparison = aCreatedTime - bCreatedTime
           break
       }
       return sortDirection === "asc" ? comparison : -comparison
@@ -198,7 +191,6 @@ export function DashboardTable() {
       status: item.status,
       assignedAt: item.assignedAt,
       switchIp: item.switchIp || "",
-      createdAt: item.createdAt, // Include creation date in export
     }))
 
     exportFilteredToExcel(exportData, filterDescription)
@@ -208,21 +200,28 @@ export function DashboardTable() {
     })
   }
 
-  const formatDateTime = (date: Date | string | null | undefined) => {
+  const formatDate = (date: Date | string | null | undefined): string => {
     if (!date) return "-"
-    // Convert string to Date if needed (localStorage stores dates as strings)
     const dateObj = typeof date === "string" ? new Date(date) : date
     if (isNaN(dateObj.getTime())) return "-"
 
     const year = dateObj.getFullYear()
     const month = String(dateObj.getMonth() + 1).padStart(2, "0")
     const day = String(dateObj.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  const formatTime = (date: Date | string | null | undefined): string => {
+    if (!date) return "-"
+    const dateObj = typeof date === "string" ? new Date(date) : date
+    if (isNaN(dateObj.getTime())) return "-"
+
     let hours = dateObj.getHours()
     const minutes = String(dateObj.getMinutes()).padStart(2, "0")
     const ampm = hours >= 12 ? "pm" : "am"
     hours = hours % 12
     hours = hours ? hours : 12
-    return `${year}-${month}-${day} ${hours}:${minutes}${ampm}`
+    return `${hours}:${minutes}${ampm}`
   }
 
   const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
@@ -318,15 +317,16 @@ export function DashboardTable() {
                     <SortButton field="status">Status</SortButton>
                   </TableHead>
                   <TableHead className="hidden lg:table-cell">
-                    <SortButton field="assignedAt">Assigned At</SortButton>
+                    <SortButton field="assignedAt">Assigned Date</SortButton>
                   </TableHead>
+                  <TableHead className="hidden xl:table-cell">Assigned Time</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                       {dashboardData.length === 0
                         ? "No data yet. Add devices or IP ranges to get started."
                         : "No results match your filters."}
@@ -367,7 +367,10 @@ export function DashboardTable() {
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                          {formatDateTime(item.assignedAt)}
+                          {formatDate(item.assignedAt)}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                          {formatTime(item.assignedAt)}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>

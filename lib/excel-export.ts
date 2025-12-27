@@ -2,10 +2,7 @@ import * as XLSX from "xlsx"
 import type { Device, IPAddress, IPRange, VLAN } from "./types"
 
 function downloadWorkbook(workbook: XLSX.WorkBook, filename: string): void {
-  // Write to array buffer (browser compatible)
   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
-
-  // Create blob and trigger download
   const blob = new Blob([excelBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   })
@@ -19,15 +16,28 @@ function downloadWorkbook(workbook: XLSX.WorkBook, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
-function formatDateTime(date: Date | null | undefined): string {
+function formatDate(date: Date | string | null | undefined): string {
   if (!date) return ""
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const dateObj = typeof date === "string" ? new Date(date) : date
+  if (isNaN(dateObj.getTime())) return ""
+
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0")
+  const day = String(dateObj.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function formatTime(date: Date | string | null | undefined): string {
+  if (!date) return ""
+  const dateObj = typeof date === "string" ? new Date(date) : date
+  if (isNaN(dateObj.getTime())) return ""
+
+  let hours = dateObj.getHours()
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0")
+  const ampm = hours >= 12 ? "pm" : "am"
+  hours = hours % 12
+  hours = hours ? hours : 12
+  return `${hours}:${minutes}${ampm}`
 }
 
 /**
@@ -37,7 +47,6 @@ function formatDateTime(date: Date | null | undefined): string {
 export function exportDevicesToExcel(devices: Device[], ipAddresses: IPAddress[], vlans: VLAN[]): void {
   const vlanMap = new Map(vlans.map((v) => [v.id, `VLAN ${v.vlanId} - ${v.name}`]))
 
-  // Prepare data rows with headers - Added Switch IP column
   const data = devices.map((device) => ({
     "Device Name": device.name,
     Location: device.location,
@@ -47,15 +56,13 @@ export function exportDevicesToExcel(devices: Device[], ipAddresses: IPAddress[]
     "MAC Address": device.macAddress || "",
     Type: device.type,
     Notes: device.notes,
-    "Assigned At": formatDateTime(device.assignedAt),
-    "Created At": device.createdAt.toISOString().split("T")[0],
+    "Assigned Date": formatDate(device.assignedAt),
+    "Assigned Time": formatTime(device.assignedAt),
   }))
 
-  // Create workbook and worksheet
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.json_to_sheet(data)
 
-  // Set column widths for better readability - Added Switch IP column
   worksheet["!cols"] = [
     { wch: 25 }, // Device Name
     { wch: 20 }, // Location
@@ -65,15 +72,12 @@ export function exportDevicesToExcel(devices: Device[], ipAddresses: IPAddress[]
     { wch: 18 }, // MAC Address
     { wch: 12 }, // Type
     { wch: 30 }, // Notes
-    { wch: 20 }, // Assigned At
-    { wch: 12 }, // Created At
+    { wch: 14 }, // Assigned Date
+    { wch: 12 }, // Assigned Time
   ]
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Devices")
-
-  // Generate filename with current date
   const filename = `devices-${new Date().toISOString().split("T")[0]}.xlsx`
-
   downloadWorkbook(workbook, filename)
 }
 
@@ -86,7 +90,6 @@ export function exportIpsToExcel(ipAddresses: IPAddress[], devices: Device[], ra
   const rangeMap = new Map(ranges.map((r) => [r.id, r.name]))
   const vlanMap = new Map(vlans.map((v) => [v.id, `VLAN ${v.vlanId} - ${v.name}`]))
 
-  // Prepare data rows with headers - Added Switch IP column
   const data = ipAddresses.map((ip) => {
     const device = ip.deviceId ? deviceMap.get(ip.deviceId) : null
     return {
@@ -97,16 +100,14 @@ export function exportIpsToExcel(ipAddresses: IPAddress[], devices: Device[], ra
       "Switch IP": device?.switchIp || "",
       VLAN: ip.vlanId ? vlanMap.get(ip.vlanId) || "" : "",
       "Range Name": rangeMap.get(ip.rangeId) || "Manual",
-      "Assigned At": formatDateTime(ip.assignedAt),
-      "Created At": ip.createdAt.toISOString().split("T")[0],
+      "Assigned Date": formatDate(ip.assignedAt),
+      "Assigned Time": formatTime(ip.assignedAt),
     }
   })
 
-  // Create workbook and worksheet
   const workbook = XLSX.utils.book_new()
   const worksheet = XLSX.utils.json_to_sheet(data)
 
-  // Set column widths for better readability - Added Switch IP column
   worksheet["!cols"] = [
     { wch: 15 }, // IP Address
     { wch: 12 }, // Status
@@ -115,15 +116,12 @@ export function exportIpsToExcel(ipAddresses: IPAddress[], devices: Device[], ra
     { wch: 15 }, // Switch IP
     { wch: 20 }, // VLAN
     { wch: 20 }, // Range Name
-    { wch: 20 }, // Assigned At
-    { wch: 12 }, // Created At
+    { wch: 14 }, // Assigned Date
+    { wch: 12 }, // Assigned Time
   ]
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "IP Addresses")
-
-  // Generate filename with current date
   const filename = `ip-addresses-${new Date().toISOString().split("T")[0]}.xlsx`
-
   downloadWorkbook(workbook, filename)
 }
 
@@ -133,9 +131,8 @@ export interface FilteredExportItem {
   location: string
   vlanName: string
   status: string
-  assignedAt: Date | null
+  assignedAt: Date | string | null
   switchIp: string
-  createdAt: Date | null | undefined // Added createdAt field
 }
 
 /**
@@ -150,8 +147,8 @@ export function exportFilteredToExcel(data: FilteredExportItem[], filterDescript
     "Switch IP": item.switchIp || "-",
     VLAN: item.vlanName || "-",
     Status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
-    "Created At": formatDateTime(item.createdAt),
-    "Assigned At": formatDateTime(item.assignedAt),
+    "Assigned Date": formatDate(item.assignedAt),
+    "Assigned Time": formatTime(item.assignedAt),
   }))
 
   const workbook = XLSX.utils.book_new()
@@ -164,8 +161,8 @@ export function exportFilteredToExcel(data: FilteredExportItem[], filterDescript
     { wch: 15 }, // Switch IP
     { wch: 20 }, // VLAN
     { wch: 12 }, // Status
-    { wch: 20 }, // Created At
-    { wch: 20 }, // Assigned At
+    { wch: 14 }, // Assigned Date
+    { wch: 12 }, // Assigned Time
   ]
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Filtered Results")
@@ -184,10 +181,8 @@ export function exportAllToExcel(devices: Device[], ipAddresses: IPAddress[], ra
   const deviceMap = new Map(devices.map((d) => [d.id, { name: d.name, location: d.location, switchIp: d.switchIp }]))
   const rangeMap = new Map(ranges.map((r) => [r.id, r.name]))
 
-  // Create workbook
   const workbook = XLSX.utils.book_new()
 
-  // Sheet 1: Devices - Added Switch IP column
   const devicesData = devices.map((device) => ({
     "Device Name": device.name,
     Location: device.location,
@@ -197,8 +192,8 @@ export function exportAllToExcel(devices: Device[], ipAddresses: IPAddress[], ra
     "MAC Address": device.macAddress || "",
     Type: device.type,
     Notes: device.notes,
-    "Assigned At": formatDateTime(device.assignedAt),
-    "Created At": device.createdAt.toISOString().split("T")[0],
+    "Assigned Date": formatDate(device.assignedAt),
+    "Assigned Time": formatTime(device.assignedAt),
   }))
   const devicesSheet = XLSX.utils.json_to_sheet(devicesData)
   devicesSheet["!cols"] = [
@@ -210,12 +205,11 @@ export function exportAllToExcel(devices: Device[], ipAddresses: IPAddress[], ra
     { wch: 18 },
     { wch: 12 },
     { wch: 30 },
-    { wch: 20 },
+    { wch: 14 },
     { wch: 12 },
   ]
   XLSX.utils.book_append_sheet(workbook, devicesSheet, "Devices")
 
-  // Sheet 2: IP Addresses - Added Switch IP column
   const ipsData = ipAddresses.map((ip) => {
     const device = ip.deviceId ? deviceMap.get(ip.deviceId) : null
     return {
@@ -226,8 +220,8 @@ export function exportAllToExcel(devices: Device[], ipAddresses: IPAddress[], ra
       "Switch IP": device?.switchIp || "",
       VLAN: ip.vlanId ? vlanMap.get(ip.vlanId) || "" : "",
       "Range Name": rangeMap.get(ip.rangeId) || "Manual",
-      "Assigned At": formatDateTime(ip.assignedAt),
-      "Created At": ip.createdAt.toISOString().split("T")[0],
+      "Assigned Date": formatDate(ip.assignedAt),
+      "Assigned Time": formatTime(ip.assignedAt),
     }
   })
   const ipsSheet = XLSX.utils.json_to_sheet(ipsData)
@@ -239,24 +233,21 @@ export function exportAllToExcel(devices: Device[], ipAddresses: IPAddress[], ra
     { wch: 15 },
     { wch: 20 },
     { wch: 20 },
-    { wch: 20 },
+    { wch: 14 },
     { wch: 12 },
   ]
   XLSX.utils.book_append_sheet(workbook, ipsSheet, "IP Addresses")
 
-  // Sheet 3: VLANs
+  // Sheet 3: VLANs (unchanged)
   const vlansData = vlans.map((vlan) => ({
     "VLAN ID": vlan.vlanId,
     Name: vlan.name,
     Description: vlan.description,
-    "Created At": vlan.createdAt.toISOString().split("T")[0],
   }))
   const vlansSheet = XLSX.utils.json_to_sheet(vlansData)
-  vlansSheet["!cols"] = [{ wch: 10 }, { wch: 20 }, { wch: 30 }, { wch: 12 }]
+  vlansSheet["!cols"] = [{ wch: 10 }, { wch: 20 }, { wch: 30 }]
   XLSX.utils.book_append_sheet(workbook, vlansSheet, "VLANs")
 
-  // Generate filename with current date
   const filename = `network-inventory-${new Date().toISOString().split("T")[0]}.xlsx`
-
   downloadWorkbook(workbook, filename)
 }
