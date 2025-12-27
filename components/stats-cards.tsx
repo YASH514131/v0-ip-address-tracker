@@ -1,13 +1,13 @@
 "use client"
-
-import * as React from "react"
 import { Server, Globe, CheckCircle, Clock, AlertCircle, Network, Monitor } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { useStore } from "@/lib/store"
-import { OthersInventory } from "./others-inventory"
 
-export function StatsCards() {
-  const [othersOpen, setOthersOpen] = React.useState(false)
+interface StatsCardsProps {
+  onOthersClick: () => void
+}
+
+export function StatsCards({ onOthersClick }: StatsCardsProps) {
   const { devices, ipAddresses, vlans, otherDevices } = useStore()
 
   const stats = {
@@ -76,35 +76,31 @@ export function StatsCards() {
       color: "text-rose-600 dark:text-rose-400",
       bgColor: "bg-rose-500/10",
       clickable: true,
-      onClick: () => setOthersOpen(true),
+      onClick: onOthersClick,
     },
   ]
 
   return (
-    <>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
-        {cards.map((card) => (
-          <Card
-            key={card.label}
-            className={`border-border/50 ${card.clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
-            onClick={card.onClick}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`rounded-lg p-2 ${card.bgColor}`}>
-                  <card.icon className={`h-4 w-4 ${card.color}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  <p className="text-xs text-muted-foreground">{card.label}</p>
-                </div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
+      {cards.map((card) => (
+        <Card
+          key={card.label}
+          className={`border-border/50 ${card.clickable ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}`}
+          onClick={card.onClick}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-lg p-2 ${card.bgColor}`}>
+                <card.icon className={`h-4 w-4 ${card.color}`} />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <OthersInventory open={othersOpen} onOpenChange={setOthersOpen} />
-    </>
+              <div>
+                <p className="text-2xl font-bold">{card.value}</p>
+                <p className="text-xs text-muted-foreground">{card.label}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   )
 }

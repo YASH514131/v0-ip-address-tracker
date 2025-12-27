@@ -18,12 +18,14 @@ import {
 import { useStore } from "@/lib/store"
 import { VLAN_COLORS, type VLAN } from "@/lib/types"
 import { VlanDialog } from "./vlan-dialog"
-import { VlanDetailDialog } from "./vlan-detail-dialog"
 import { useToast } from "@/hooks/use-toast"
 
-export function VlanList() {
+interface VlanListProps {
+  onVlanClick: (vlan: VLAN, colorIndex: number) => void
+}
+
+export function VlanList({ onVlanClick }: VlanListProps) {
   const [deleteVlan, setDeleteVlan] = React.useState<VLAN | null>(null)
-  const [selectedVlan, setSelectedVlan] = React.useState<{ vlan: VLAN; index: number } | null>(null)
   const { vlans, devices, ipAddresses, deleteVlan: removeVlan } = useStore()
   const { toast } = useToast()
 
@@ -72,7 +74,7 @@ export function VlanList() {
                 <div
                   key={vlan.id}
                   className={`rounded-lg border p-4 ${colors.bg} ${colors.border} cursor-pointer hover:opacity-80 transition-opacity`}
-                  onClick={() => setSelectedVlan({ vlan, index })}
+                  onClick={() => onVlanClick(vlan, index)}
                 >
                   <div className="flex items-start justify-between">
                     <div>
@@ -115,15 +117,6 @@ export function VlanList() {
           </div>
         </CardContent>
       </Card>
-
-      {selectedVlan && (
-        <VlanDetailDialog
-          vlan={selectedVlan.vlan}
-          colorIndex={selectedVlan.index}
-          open={!!selectedVlan}
-          onOpenChange={(open) => !open && setSelectedVlan(null)}
-        />
-      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteVlan} onOpenChange={(open) => !open && setDeleteVlan(null)}>
