@@ -49,7 +49,9 @@ interface StoreState extends AppState {
   updateVlan: (id: string, updates: Partial<Omit<VLAN, "id" | "createdAt">>) => { success: boolean; error?: string }
   deleteVlan: (id: string) => void
 
-  bulkImportDevices: (devices: Array<{ name: string; location: string; ipAddress: string; vlanId?: string }>) => {
+  bulkImportDevices: (
+    devices: Array<{ name: string; location: string; ipAddress: string; switchIp?: string | null; vlanId?: string }>,
+  ) => {
     success: boolean
     imported: number
     skipped: number
@@ -452,7 +454,7 @@ export const useStore = create<StoreState>()(
             vlanId: item.vlanId || null,
             macAddress: null,
             assignedIp: item.ipAddress,
-            switchIp: null,
+            switchIp: item.switchIp || null,
             notes: "",
             createdAt: now,
             updatedAt: now,

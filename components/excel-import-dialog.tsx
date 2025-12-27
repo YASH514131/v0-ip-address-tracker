@@ -25,6 +25,7 @@ interface ParsedRow {
   location: string
   ipAddress: string
   deviceName: string
+  switchIp: string | null
   isValid: boolean
   error?: string
 }
@@ -75,6 +76,7 @@ export function ExcelImportDialog() {
       const deviceIdx = headers.findIndex(
         (h) => h?.toString().toLowerCase().includes("device") || h?.toString().toLowerCase().includes("name"),
       )
+      const switchIpIdx = headers.findIndex((h) => h?.toString().toLowerCase().includes("switch"))
 
       if (locationIdx === -1 || ipIdx === -1 || deviceIdx === -1) {
         toast({
@@ -92,6 +94,7 @@ export function ExcelImportDialog() {
         const location = row[locationIdx]?.toString().trim() || ""
         const ipAddress = row[ipIdx]?.toString().trim() || ""
         const deviceName = row[deviceIdx]?.toString().trim() || ""
+        const switchIp = switchIpIdx !== -1 ? row[switchIpIdx]?.toString().trim() || null : null
 
         // Skip empty rows
         if (!location && !ipAddress && !deviceName) continue
@@ -111,9 +114,12 @@ export function ExcelImportDialog() {
         } else if (!isValidIp(ipAddress)) {
           isValid = false
           error = "Invalid IP format"
+        } else if (switchIp && !isValidIp(switchIp)) {
+          isValid = false
+          error = "Invalid Switch IP format"
         }
 
-        rows.push({ location, ipAddress, deviceName, isValid, error })
+        rows.push({ location, ipAddress, deviceName, switchIp, isValid, error })
       }
 
       setParsedData(rows)
@@ -134,6 +140,7 @@ export function ExcelImportDialog() {
       name: row.deviceName,
       location: row.location,
       ipAddress: row.ipAddress,
+      switchIp: row.switchIp,
       vlanId: selectedVlan !== "none" ? selectedVlan : undefined,
     }))
 
@@ -170,7 +177,7 @@ export function ExcelImportDialog() {
         <DialogHeader>
           <DialogTitle>Import from Excel</DialogTitle>
           <DialogDescription>
-            Upload an Excel file (.xlsx) with columns: Location, IP Address, Device Name
+            Upload an Excel file (.xlsx) with columns: Location, IP Address, Device Name, Switch IP (optional)
           </DialogDescription>
         </DialogHeader>
 
@@ -247,6 +254,7 @@ export function ExcelImportDialog() {
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-1">
                         <span className="text-muted-foreground truncate">{row.location || "(empty)"}</span>
+                        {row.switchIp && <span className="text-muted-foreground text-xs">Switch: {row.switchIp}</span>}
                         {row.error && <span className="text-destructive text-xs">{row.error}</span>}
                       </div>
                     </div>
