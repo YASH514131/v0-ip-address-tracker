@@ -1,13 +1,28 @@
 "use client"
 
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 import type { Device, IPAddress, IPRange, IPStatus, AppState, VLAN } from "./types"
 import { generateIpRange } from "./ip-utils"
 
 // Generate a simple unique ID
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+const browserStorage = {
+  getItem: (name: string): string | null => {
+    if (typeof window === "undefined") return null
+    return localStorage.getItem(name)
+  },
+  setItem: (name: string, value: string): void => {
+    if (typeof window === "undefined") return
+    localStorage.setItem(name, value)
+  },
+  removeItem: (name: string): void => {
+    if (typeof window === "undefined") return
+    localStorage.removeItem(name)
+  },
 }
 
 interface StoreState extends AppState {
@@ -414,12 +429,10 @@ export const useStore = create<StoreState>()(
         let skipped = 0
         const errors: string[] = []
         const devicesToAdd: Device[] = []
-        const ipsToUpdate: Map<string, { deviceId: string }> = new Map()
         const now = new Date()
 
         for (const item of importData) {
           // Skip if IP already assigned
-          const existingIp = state.ipAddresses.find((ip) => ip.address === item.ipAddress)
           const existingDevice = state.devices.find(
             (d) => d.assignedIp === item.ipAddress || d.name.toLowerCase() === item.name.toLowerCase(),
           )
@@ -447,7 +460,6 @@ export const useStore = create<StoreState>()(
           }
 
           devicesToAdd.push(newDevice)
-          ipsToUpdate.set(item.ipAddress, { deviceId })
           imported++
         }
 
@@ -503,7 +515,13 @@ export const useStore = create<StoreState>()(
       clearAllData: () => set({ devices: [], ipAddresses: [], ipRanges: [], vlans: [] }),
     }),
     {
-      name: "ip-manager-storage-v3",
+      name: "ip-manager-storage-v4",
+      storage: createJSONStorage(() => browserStorage),
+      version: 4,
+      migrate: (persistedState, version) => {
+        // Return persisted state as-is, it will be merged with defaults
+        return persistedState as StoreState
+      },
       // Custom serialization for Date objects
       serialize: (state) =>
         JSON.stringify(state, (key, value) => {
